@@ -16,7 +16,7 @@ module control_unit (
 );
 
 /***************************************************************************
-   STATES; 3 BIT BINARY ENCODINGS
+   FSM STATES; 3 BIT BINARY ENCODINGS - up to 8 states
  -------------------------------------------------------------------------*/
     localparam = IDLE = 3'b000,
               STORE = 3'b001,
@@ -28,20 +28,20 @@ module control_unit (
               UPDATE_PC = 3'b111;
 
 /***************************************************************************
-   OPERATIONS
+   OPERATIONS; 6 BIT BINARY ENCODINGS - up to 64 instructions
  -------------------------------------------------------------------------*/
     localparam ADD = 6'b000000,
               SUB = 6'b000001,
-              LDI = 6'b000010,
               INC = 6'b000011,
               DEC = 6'b000100,
               LSR = 6'b000101,
               LSL = 6'b000110,
-              MOV = 6'b000111,
               XOR = 6'b001000,
               AND = 6'b001001,
               NOR = 6'b001010,
               NOT = 6'b001011,
+              LDI = 6'b000010,
+              MOV = 6'b000111,
               OR = 6'b001100,
               JE = 6'b001101,
               JG = 6'b001110,
@@ -52,7 +52,7 @@ module control_unit (
               CP = 6'b010011,
         
 /***************************************************************************
-   INITIALISATION
+   INITAL VALUES
  -------------------------------------------------------------------------*/
     reg [2:0] current_state = IDLE;
     reg [2:0] next_state = IDLE;
