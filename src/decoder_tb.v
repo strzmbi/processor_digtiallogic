@@ -32,6 +32,10 @@ always @(*) begin
         4'b0001: begin instruction = 16'hA231; end
         4'b0010: begin instruction = 16'hA562; end
         4'b0011: begin instruction = 16'hA121; end
+        4'b0100: begin instruction = 16'hD121; end
+        4'b0101: begin instruction = 16'hD221; end
+        4'b0110: begin instruction = 16'hC221; end
+        4'b0111: begin instruction = 16'hC321; end
         default: begin instruction = 16'hA421; end
     endcase
 end
