@@ -2,61 +2,75 @@
 module control_unit ( 
 
     input clk;
-    input [5:0] instruction;
-    input [4:0] argument_1, argument_2;
+    input [5:0]         instruction;
+    input [4:0]         argument_1, argument_2;
 
-    output reg program_counter_signal;
-    output reg result_register_signal;
-    output reg arithmetic_load_signal;
-    output reg memory_store_signal;
+    output reg          program_counter_signal;
+    output reg          result_register_signal;
+    output reg          arithmetic_load_signal;
+    output reg          memory_store_signal;
 
-    output reg [4:0] register_select;
-    output reg [5:0] instruction_select;
+    output reg [4:0]    register_select;
+    output reg [5:0]    instruction_select;
 
 );
 
 /***************************************************************************
    FSM STATES; 3 BIT BINARY ENCODINGS - up to 8 states
  -------------------------------------------------------------------------*/
-    localparam = IDLE = 3'b000,
-              STORE = 3'b001,
-              STORE_REGISTER = 3'b010, 
-              LOAD_1 = 3'b011, 
-              LOAD_2 = 3'b100, 
-              LOAD_LITERAL = 3'b101, 
-              SEND_INSTRUCTION_SIGNALS = 3'b110, 
-              UPDATE_PC = 3'b111;
+    localparam      IDLE                        = 3'b000,
+                    STORE                       = 3'b001,
+                    STORE_REGISTER              = 3'b010, 
+                    LOAD_1                      = 3'b011, 
+                    LOAD_2                      = 3'b100, 
+                    LOAD_LITERAL                = 3'b101, 
+                    UPDATE_PC                   = 3'b111,
+                    SEND_INSTRUCTION_SIGNALS    = 3'b110;
 
 /***************************************************************************
    OPERATIONS; 6 BIT BINARY ENCODINGS - up to 64 instructions
- -------------------------------------------------------------------------*/
-    localparam ADD = 6'b000000,
-              SUB = 6'b000001,
-              INC = 6'b000011,
-              DEC = 6'b000100,
-              LSR = 6'b000101,
-              LSL = 6'b000110,
-              XOR = 6'b001000,
-              AND = 6'b001001,
-              NOR = 6'b001010,
-              NOT = 6'b001011,
-              LDI = 6'b000010,
-              MOV = 6'b000111,
-              OR = 6'b001100,
-              JE = 6'b001101,
-              JG = 6'b001110,
-              JL = 6'b001111,
-              JMP = 6'b010000,
-              LD = 6'b010001,
-              ST = 6'b010010,
-              CP = 6'b010011,
+ -------------------------------------------------------------------------
+   | COMPONENT   | MSB   |
+   -----------------------
+   | ALU         | 00    |
+   | MEMORY      | 01    |
+   | BRANCHES    | 11    |
+ --------------------------------------------------------------------------*/
+    localparam      ADD     = 6'b000000,        
+                    SUB     = 6'b000001,
+                    INC     = 6'b000011,
+                    DEC     = 6'b000100,
+                    LSR     = 6'b000101,
+                    LSL     = 6'b000110,
+                    XOR     = 6'b001000,
+                    AND     = 6'b001001,
+                    NOR     = 6'b001010,
+                    NOT     = 6'b001011,
+                    OR      = 6'b001100,
+
+                    LDI     = 6'b010000,
+                    LD      = 6'b010001,
+                    ST      = 6'b010010,
+                    MOV     = 6'b010011,
         
+                    JMP     = 6'b110000,
+                    JE      = 6'b110001,
+                    JG      = 6'b110010,
+                    JL      = 6'b110100,
+                    CP      = 6'b110011;
+
 /***************************************************************************
    INITAL VALUES
  -------------------------------------------------------------------------*/
-    reg [2:0] current_state = IDLE;
-    reg [2:0] next_state = IDLE;
-    reg [3:0] counter = 4'b0000;
+    reg [2:0]   current_state,  next_state; 
+    reg [3:0]   counter;
+
+    intial begin
+        current_state = IDLE;
+        next_state = IDLE;
+        counter = 4'b0000;
+        #10 $finish;
+    end
 
 /***************************************************************************
    SEQUENTIAL LOGIC
