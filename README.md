@@ -7,3 +7,4 @@ TBD:
   * ALU
   * SREG
   * PC unit, PC mem
+  * Static memory (week 11 lecture content)
