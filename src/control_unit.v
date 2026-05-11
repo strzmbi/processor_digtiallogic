@@ -1,4 +1,5 @@
 
+
 module control_unit ( 
 	//Decoded Instruction
     input clk;
@@ -89,8 +90,35 @@ localparam      IDLE                        = 3'b000,
  -------------------------------------------------------------------------*/
 
 always @(posedge clk) begin
-	case ()
-endcase
-
+	case (current_state)
+		IDLE: begin
+		
+		end
+		
+		LOAD_1: begin
+		
+		end
+		
+		LOAD_2: begin
+		
+		end
+		
+		LOAD_LITERAL: begin
+		
+		end
+		
+		SEND_INSTRUCTION_SIGNALS: begin
+		
+		end
+		
+		STORE_REGISTER: begin
+		
+		end
+		
+		UPDATE_PC: begin
+		
+		end
+	endcase
+end
 
 endmodule
