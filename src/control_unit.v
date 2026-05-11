@@ -1,4 +1,3 @@
-
 module control_unit ( 
 
     input clk;
@@ -60,7 +59,7 @@ module control_unit (
                     CP      = 6'b110011;
 
 /***************************************************************************
-   INITAL VALUES
+   INITAL STATEMENT
  -------------------------------------------------------------------------*/
     reg [2:0]   current_state,  next_state; 
     reg [3:0]   counter;
