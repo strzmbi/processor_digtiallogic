@@ -25,4 +25,5 @@ Hi team!
  - Data Memory
 
 ## RUDY
+ - **Muck around**
  - Refactor control unit, plan for register enables
