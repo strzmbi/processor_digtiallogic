@@ -201,7 +201,6 @@ module control_unit (
 			
 			SEND_INSTRUCTION_SIGNALS: begin
                 case (instruction)
-                    
                 endcase
 			end
 			
