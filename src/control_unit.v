@@ -15,6 +15,33 @@ module control_unit (
 
 );
 
+    /*
+    //Decoded Instruction
+    input clk;
+    input [5:0]         instruction;
+    input [4:0]         argument_1, argument_2;
+    
+    //Register Signal
+    output reg [4:0]    register_tri;
+    output reg [4:0]    register_en;
+    
+    //Alu Signals
+    output reg          alu_load_en;
+    output reg			alu_result_tri;
+    output reg			alu_result_en;
+    output reg [5:0]    alu_instruction_select;
+    
+    //Memory Signals
+    output reg         memory_read_en;
+    output reg         memory_write_en;
+    
+    output reg [4:0]   memory_write_addr;
+    output reg [4:0]   memory_read_addr;
+    
+    //Program Counter
+    output reg         increment_program_counter;
+    */
+
 /***************************************************************************
    FSM STATES; 3 BIT BINARY ENCODINGS - up to 8 states
  -------------------------------------------------------------------------*/
