@@ -65,23 +65,23 @@ module control_unit (
    FSM STATES; 3 BIT BINARY ENCODINGS - up to 8 states
  -------------------------------------------------------------------------*/
  
-localparam      IDLE                        = 3'b000,
-                LOAD_1                      = 3'b011, 
-                LOAD_2                      = 3'b100, 
-                UPDATE_PC                   = 3'b111,
-				LOAD_LITERAL                = 3'b101,
-				STORE_REGISTER              = 3'b010,
-                SEND_INSTRUCTION_SIGNALS    = 3'b110;
+	localparam      IDLE                        = 3'b000,
+					LOAD_1                      = 3'b011, 
+					LOAD_2                      = 3'b100, 
+					UPDATE_PC                   = 3'b111,
+					LOAD_LITERAL                = 3'b101,
+					STORE_REGISTER              = 3'b010,
+					SEND_INSTRUCTION_SIGNALS    = 3'b110;
 				
 /***************************************************************************
    SEQUENTIAL LOGIC
  -------------------------------------------------------------------------*/
  
-	reg [3:0]   counter;
+	reg [3:0]   clock_counter;
 	reg [2:0]   current_state,  next_state; 
 	
     always @(posedge clk) begin
-        counter <= counter + 4'd1;
+        clock_counter <= clock_counter + 4'd1;
         current_state <= next_state;
     end
 	
@@ -89,36 +89,79 @@ localparam      IDLE                        = 3'b000,
    OUTPUT LOGIC
  -------------------------------------------------------------------------*/
 
-always @(posedge clk) begin
-	case (current_state)
-		IDLE: begin
-		
-		end
-		
-		LOAD_1: begin
-		
-		end
-		
-		LOAD_2: begin
-		
-		end
-		
-		LOAD_LITERAL: begin
-		
-		end
-		
-		SEND_INSTRUCTION_SIGNALS: begin
-		
-		end
-		
-		STORE_REGISTER: begin
-		
-		end
-		
-		UPDATE_PC: begin
-		
-		end
-	endcase
-end
+	always @(posedge clk) begin
+		case (current_state)
+			IDLE: begin
+				case (instruction)
+					ADD, SUB, XOR, AND, XOR, NOR, OR, CP: next_state <= LOAD_2;
+					INC, DEC, LSL, LSR, NOT: next_state <= LOAD_1;
+					LDI: next_state <= LOAD_LITERAL;
+					
+					default: next_state <= SEND_INSTRUCTION_SIGNALS;
+				endcase
+				
+				clock_counter <= 4'b0000;
+			end
+			
+			LOAD_1: begin
+				if (clock_counter == 4'b0000) begin
+					
+					register_en <= argument_1;
+					alu_load_en <= 1'd1;
+				
+				end else begin
+				
+					alu_load_en <= 1'd0;
+					clock_counter <= 4'b0000;
+					next_state <= SEND_INSTRUCTION_SIGNALS;
+				
+				end
+			end
+			
+			LOAD_2: begin
+				if (clock_counter == 4'b0000) begin
+					
+					register_en <= argument_1;
+					alu_load_en <= 1'd1;
+				
+				end else if (clock_counter == 4'b0001) begin
+				
+					alu_load_en <= 1'd0;
+					register_en <= argument_2;
+				
+				end else begin
+				
+					next_state <= SEND_INSTRUCTION_SIGNALS;
+					clock_counter <= 4'b0000; 
+					
+				end
+			end
+			
+			LOAD_LITERAL: begin
+			
+			end
+			
+			SEND_INSTRUCTION_SIGNALS: begin
+			
+			end
+			
+			STORE_REGISTER: begin
+				//program the storing mechanism here!
+				next_state <= UPDATE_PC;
+				clock_counter <= 4'b0000;
+			end
+			
+			UPDATE_PC: begin
+				if (clock_counter == 0) begin
+					increment_program_counter <= 1'd1; 
+				end
+				else begin
+					increment_program_counter <= 1'd0;
+					next_state <= IDLE;
+					clock_counter <= 4'b0000; 
+				end
+			end
+		endcase
+	end
 
 endmodule
