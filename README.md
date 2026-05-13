@@ -6,8 +6,8 @@ Hi team!
   * Regs
   * ALU
   * SREG
-  * PC unit, PC mem
-  * Static memory (week 11 lecture content)
+  * ~PC unit~, PC mem
+  * ~Static memory (week 11 lecture content)~
 
 **Rudy wants you to do :**
 
@@ -22,8 +22,8 @@ Hi team!
  - Shift registers
 
 ## CHRISTINE
- - Data Memory
+ - ~Data Memory~
 
 ## RUDY
  - **Muck around**
- - Refactor control unit, plan for register enables
+ - ~Refactor control unit~, plan for register enables
