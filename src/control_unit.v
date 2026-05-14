@@ -3,7 +3,10 @@
 module control_unit ( 
     // Reset (async)
     input reset,
-	
+
+    //One Hot Enable
+    output              one_hot_enable;
+
 	//Decoded Instruction
     input clk;
     input [5:0]         instruction,
@@ -120,12 +123,12 @@ module control_unit (
 			
 			LOAD_1: begin
 				if (clock_counter == 4'b0000) begin
-					
+					one_hot_enable <= 1'd1;
 					register_tri <= argument_1;
 					alu_load_en <= 1'd1;
 				
 				end else begin
-				
+                    one_hot_enable <= 1'd0;
 					alu_load_en <= 1'd0;
 					next_state <= SEND_INSTRUCTION_SIGNALS;
                     clock_counter <= 4'b0000;
@@ -135,17 +138,16 @@ module control_unit (
 			
 			LOAD_2: begin
 				if (clock_counter == 4'b0000) begin
-					
+					one_hot_enable <= 1'd1;
 					register_tri <= argument_1;
 					alu_load_en <= 1'd1;
 				
 				end else if (clock_counter == 4'b0001) begin
-				
 					alu_load_en <= 1'd0;
 					register_tri <= argument_2;
 				
 				end else begin
-				
+                    one_hot_enable <= 1'd0;
 					next_state <= SEND_INSTRUCTION_SIGNALS;
 					clock_counter <= 4'b0000; 
 					
@@ -154,7 +156,7 @@ module control_unit (
 			
 			LOAD_LITERAL: begin // puts the value onto the bus
 				if (clock_counter == 4'b0000) begin
-					
+                    
 					immediate_val <= argument_1;
 					immediate_en <= 1'd1;
 					
@@ -238,7 +240,7 @@ module control_unit (
 
                     end
                     JMP: begin
-                        
+
                     end
                     JL, JE, JG begin
                         
