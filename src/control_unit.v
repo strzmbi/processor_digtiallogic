@@ -1,6 +1,9 @@
 
 
 module control_unit ( 
+	//reset
+    input reset
+	
 	//Decoded Instruction
     input clk;
     input [5:0]         instruction;
@@ -91,7 +94,7 @@ module control_unit (
         current_state <= next_state;
     end
 
-	always @(posedge reset and posedge clk) begin
+	always @(reset) begin
         current_state = IDLE;
         next_state = IDLE;
     end
