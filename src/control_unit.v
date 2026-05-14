@@ -1,57 +1,37 @@
-module control_unit ( 
-
+module control_unit_v2 ( 
+	// Reset (async)
+    input reset,
+	
+	//Decoded Instruction
     input clk;
-    input [5:0]         instruction;
-    input [4:0]         argument_1, argument_2;
-
-    output reg          program_counter_signal;
-    output reg          result_register_signal;
-    output reg          arithmetic_load_signal;
-    output reg          memory_store_signal;
-
-    output reg [4:0]    register_select;
-    output reg [5:0]    instruction_select;
-
-);
-
-    /*
-    //Decoded Instruction
-    input clk;
-    input [5:0]         instruction;
-    input [4:0]         argument_1, argument_2;
+    input [5:0]         instruction,
+    input [4:0]         argument_1, argument_2,
     
     //Register Signal
-    output reg [4:0]    register_tri;
-    output reg [4:0]    register_en;
+    output reg [4:0]    register_tri,
+    output reg [4:0]    register_en,
+
+	//Immediate Loading Signals 
+	output reg			immediate_en,
+	output reg   		immediate_tri,
+	output reg [15:0]	immediate_val,
     
     //Alu Signals
-    output reg          alu_load_en;
-    output reg			alu_result_tri;
-    output reg			alu_result_en;
-    output reg [5:0]    alu_instruction_select;
+    output reg          alu_load_en,
+    output reg			alu_result_en,
+	output reg			alu_result_tri,
+    output reg [5:0]    alu_instruction_select,
     
     //Memory Signals
-    output reg         memory_read_en;
-    output reg         memory_write_en;
+    output reg         memory_read_en,
+    output reg         memory_write_en,
     
-    output reg [4:0]   memory_write_addr;
-    output reg [4:0]   memory_read_addr;
+    output reg [4:0]   memory_read_addr,
+	output reg [4:0]   memory_write_addr,
     
     //Program Counter
-    output reg         increment_program_counter;
-    */
-
-/***************************************************************************
-   FSM STATES; 3 BIT BINARY ENCODINGS - up to 8 states
- -------------------------------------------------------------------------*/
-    localparam      IDLE                        = 3'b000,
-                    STORE                       = 3'b001,
-                    STORE_REGISTER              = 3'b010, 
-                    LOAD_1                      = 3'b011, 
-                    LOAD_2                      = 3'b100, 
-                    LOAD_LITERAL                = 3'b101, 
-                    UPDATE_PC                   = 3'b111,
-                    SEND_INSTRUCTION_SIGNALS    = 3'b110;
+    output reg         increment_program_counter
+);
 
 /***************************************************************************
    OPERATIONS; 6 BIT BINARY ENCODINGS - up to 64 instructions
@@ -84,132 +64,173 @@ module control_unit (
                     JG      = 6'b110010,
                     JL      = 6'b110100,
                     CP      = 6'b110011;
+					
+
 
 /***************************************************************************
-   INITAL STATEMENT
+   FSM STATES; 4 BIT BINARY ENCODINGS - up to 16 states
  -------------------------------------------------------------------------*/
-    reg [2:0]   current_state,  next_state; 
-    reg [3:0]   counter;
-
-    intial begin
-        current_state = IDLE;
-        next_state = IDLE;
-        counter = 4'b0000;
-        #10 $finish;
-    end
-
+ 
+	localparam      IDLE                        = 4'b0000,
+                    LOAD_BUS                    = 4'b0001,
+					LOAD_1                      = 4'b0010, 
+					LOAD_2                      = 4'b0011,
+					UPDATE_PC                   = 4'b0100,
+					LOAD_LITERAL                = 4'b0101,
+					STORE_REGISTER              = 4'b0110,
+					SEND_INSTRUCTION_SIGNALS    = 4'b0111;
+				
 /***************************************************************************
    SEQUENTIAL LOGIC
  -------------------------------------------------------------------------*/
+ 
+	reg [3:0]   clock_counter;
+	reg [3:0]   current_state,  next_state; 
+	
     always @(posedge clk) begin
-        counter <= counter + 4'd1;
+        clock_counter <= clock_counter + 4'd1;
         current_state <= next_state;
     end
 
+	always @(reset) begin
+        current_state = IDLE;
+        next_state = IDLE;
+    end
+	
 /***************************************************************************
    OUTPUT LOGIC
  -------------------------------------------------------------------------*/
-    always @(posedge clk) begin
-        case (current_state)
-        //decode
-        IDLE: begin
-            case (instruction)
-                ADD, SUB, XOR, AND, XOR, NOR, OR, CP: next_state <= LOAD_2;
-                INC, DEC, LSL, LSR, NOT: next_state <= LOAD_1;
-                LDI: next_state <= LOAD_LITERAL;
-                default: next_state <= SEND_INSTRUCTION_SIGNALS;
-            endcase
 
-            counter <= 4'b0000;
-        end
+	always @(posedge clk) begin
+		case (current_state)
+			IDLE: begin
+				case (instruction)
+					ADD, SUB, XOR, AND, XOR, NOR, OR, CP: next_state <= LOAD_2;
+					INC, DEC, LSL, LSR, NOT: next_state <= LOAD_1;
+					LDI: next_state <= LOAD_LITERAL;
+                    LD, ST: next_state <= LOAD_BUS;
+					
+					default: next_state <= SEND_INSTRUCTION_SIGNALS;
+				endcase
+				
+				clock_counter <= 4'b0000;
+			end
+			
+			LOAD_1: begin
+				if (clock_counter == 4'b0000) begin
+					
+					register_tri <= argument_1;
+					alu_load_en <= 1'd1;
+				
+				end else begin
+				
+					alu_load_en <= 1'd0;
+					next_state <= SEND_INSTRUCTION_SIGNALS;
+                    clock_counter <= 4'b0000;
 
-        //fetch
-        LOAD_1: begin
-            if (counter == 4'b0000) begin
-                register_select <= argument_1;
-                arithmetic_load_signal <= 1'd1;
+				end
+			end
+			
+			LOAD_2: begin
+				if (clock_counter == 4'b0000) begin
+					
+					register_tri <= argument_1;
+					alu_load_en <= 1'd1;
+				
+				end else if (clock_counter == 4'b0001) begin
+				
+					alu_load_en <= 1'd0;
+					register_tri <= argument_2;
+				
+				end else begin
+				
+					next_state <= SEND_INSTRUCTION_SIGNALS;
+					clock_counter <= 4'b0000; 
+					
+				end
+			end
+			
+			LOAD_LITERAL: begin // puts the value onto the bus
+				if (clock_counter == 4'b0000) begin
+					
+					immediate_val <= argument_1;
+					immediate_en <= 1'd1;
+					
+				end else if (clock_counter == 4'b0001) begin
+
+					immediate_en <= 1'd0;
+					immediate_tri <= 1'd1;
+					
+				end else begin 
+					
+					next_state <= SEND_INSTRUCTION_SIGNALS;
+					clock_counter <= 4'b0000; 
+
+				end
+			end
+
+            LOAD_BUS: begin
+                case (instruction)
+                    LD: begin // puts the memory onto the bus
+
+                        if (clock_counter == 4'b0000) begin // can break with register select
+                            
+                            memory_read_addr <= argument_2;
+                            memory_read_en <= 1'd1;
+                                                        
+                        end else begin
+                            memory_read_en <= 1'd0;
+
+                            next_state <= SEND_INSTRUCTION_SIGNALS;
+                            clock_counter <= 4'b0000;
+                        end
+                        
+                    end 
+                    default: begin // puts register onto the bus
+
+                        if (clock_counter == 4'b0000) begin // can break with register select
+
+                            memory_write_addr <= argument_2;
+                            register_tri <= argument_1;
+                            memory_write_en <= 1'd1;
+                            
+                        end else begin
+                            memory_write_en <= 1'd0;
+
+                            next_state <= SEND_INSTRUCTION_SIGNALS;
+                            clock_counter <= 4'b0000;
+                        end
+
+                    end
+                endcase
             end
-            else begin
-                arithmetic_load_signal <= 1'd0;
-                next_state <= SEND_INSTRUCTION_SIGNALS;
-                counter <= 4'b0000; 
-            end
-        end
-
-        LOAD_2: begin
-            if (counter == 4'b0000) begin
-                register_select <= argument_1;
-                arithmetic_load_signal <= 1'd1;         
-            end
-            else if (counter == 4'b0001) begin
-                arithmetic_load_signal <= 1'd0;
-                register_select <= argument_2;
-            end
-            else begin
-                next_state <= SEND_INSTRUCTION_SIGNALS;
-                counter <= 4'b0000; 
-            end
-        end
-
-        LOAD_LITERAL: begin
-        end
-
-        //execute
-        SEND_INSTRUCTION_SIGNALS: begin
-            case (instruction)
-                ADD, XOR, AND, XOR, NOR, OR, INC, DEC, LSL, NOT: begin
-                    instruction_select <= instruction;
-                    next_state <= STORE_REGISTER;
-                    counter <= 4'b0000; 
-                end
-                LSR: begin
-                    
-                end
-                CP, SUB: begin
-                    
-                end
-                JMP, JE, JG, JL: begin
-                    
-                end
-                LDI, LD, ST: begin
-                    
-                end
-            endcase
-        end
-
-        //store
-        STORE: begin
-            //program the storing mechanism here.
-
-            next_state <= UPDATE_PC;
-            counter <= 4'b0000;
-        end
-
-        STORE_REGISTER: begin
-            //program the storing mechanism here.
-
-            next_state <= UPDATE_PC;
-            counter <= 4'b0000;
-        end
-
-        UPDATE_PC: begin
-            if (counter == 0) begin
-                program_counter_signal <= 1'd1; 
-            end
-            else begin
-                program_counter_signal <= 1'd0;
-                next_state <= IDLE;
-                counter <= 4'b0000; 
-            end
-        end
-
-        default: next_state <= IDLE;
-        endcase
-    end
+			
+			SEND_INSTRUCTION_SIGNALS: begin
+                case (instruction)
+                endcase
+			end
+			
+			STORE_REGISTER: begin
+                if (clock_counter == 0) begin
+                    register_tri <= argument_1;
+				end
+				else begin
+					next_state <= UPDATE_PC;
+					clock_counter <= 4'b0000; 
+				end
+			end
+			
+			UPDATE_PC: begin
+				if (clock_counter == 0) begin
+					increment_program_counter <= 1'd1; 
+				end
+				else begin
+					increment_program_counter <= 1'd0;
+					next_state <= IDLE;
+					clock_counter <= 4'b0000; 
+				end
+			end
+		endcase
+	end
 
 endmodule
-
-/*
-If you are reading this, This video below has a great explaination of how this works:
-https://www.youtube.com/watch?v=Aq5WXmQQooo&pp=ygUJcmljayByb2xs
-*/
