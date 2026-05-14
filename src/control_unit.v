@@ -1,9 +1,9 @@
-module control_unit_v2 ( 
-	// Reset (async)
+module control_unit ( 
+    // Reset (async)
     input reset,
 	
 	//Decoded Instruction
-    input clk;
+    input clk,
     input [5:0]         instruction,
     input [4:0]         argument_1, argument_2,
     
@@ -52,20 +52,18 @@ module control_unit_v2 (
                     AND     = 6'b001001,
                     NOR     = 6'b001010,
                     NOT     = 6'b001011,
-                    OR      = 6'b001100,
+                    OR      = 6'b001100, //11
 
                     LDI     = 6'b010000,
                     LD      = 6'b010001,
                     ST      = 6'b010010,
-                    MOV     = 6'b010011,
+                    MOV     = 6'b010011, //15
         
                     JMP     = 6'b110000,
                     JE      = 6'b110001,
                     JG      = 6'b110010,
                     JL      = 6'b110100,
-                    CP      = 6'b110011;
-					
-
+                    CP      = 6'b110011; //20
 
 /***************************************************************************
    FSM STATES; 4 BIT BINARY ENCODINGS - up to 16 states
@@ -92,7 +90,7 @@ module control_unit_v2 (
         current_state <= next_state;
     end
 
-	always @(reset) begin
+    always @(reset) begin
         current_state = IDLE;
         next_state = IDLE;
     end
@@ -105,14 +103,14 @@ module control_unit_v2 (
 		case (current_state)
 			IDLE: begin
 				case (instruction)
-					ADD, SUB, XOR, AND, XOR, NOR, OR, CP: next_state <= LOAD_2;
+					ADD, SUB, AND, XOR, NOR, OR, CP: next_state <= LOAD_2;
 					INC, DEC, LSL, LSR, NOT: next_state <= LOAD_1;
 					LDI: next_state <= LOAD_LITERAL;
                     LD, ST: next_state <= LOAD_BUS;
-					
+				    // JMP, JE, JG, JL  cases gets caught in default
 					default: next_state <= SEND_INSTRUCTION_SIGNALS;
 				endcase
-				
+
 				clock_counter <= 4'b0000;
 			end
 			
@@ -189,14 +187,12 @@ module control_unit_v2 (
                     default: begin // puts register onto the bus
 
                         if (clock_counter == 4'b0000) begin // can break with register select
-
                             memory_write_addr <= argument_2;
                             register_tri <= argument_1;
                             memory_write_en <= 1'd1;
                             
                         end else begin
                             memory_write_en <= 1'd0;
-
                             next_state <= SEND_INSTRUCTION_SIGNALS;
                             clock_counter <= 4'b0000;
                         end
@@ -207,11 +203,32 @@ module control_unit_v2 (
 			
 			SEND_INSTRUCTION_SIGNALS: begin
                 case (instruction)
+                    ADD, SUB, XOR, AND, NOR, OR, CP, INC, DEC, LSL, LSR, NOT, INC, DEC, LSL, LSR, NOT: begin //17
+                        if (clock_counter == 0) begin
+                            alu_instruction_select <= instruction;
+                            alu_result_en <= 1'b1;
+                        end
+                        if (clock_counter == 1) begin
+                            alu_result_en <= 1'b0;
+                            alu_result_tri <= 1'b1;
+                        end
+                        else begin
+                            alu_result_tri <= 1'b0;
+                            next_state <= STORE_REGISTER;
+                        end
+                    end
+                    LDI, LD: begin //19
+                        next_state <= STORE_REGISTER;
+                    end
+                    ST: begin //20
+                        next_state <= UPDATE_PC;
+                    end
                 endcase
 			end
 			
 			STORE_REGISTER: begin
                 if (clock_counter == 0) begin
+
                     register_tri <= argument_1;
 				end
 				else begin
