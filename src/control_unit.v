@@ -100,6 +100,7 @@ module control_unit (
     always @(posedge reset and posedge clk) begin
         current_state = IDLE;
         next_state = IDLE;
+		one_hot_enable = 1'd0; 
     end
 	
 /***************************************************************************
