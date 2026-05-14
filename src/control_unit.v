@@ -32,7 +32,9 @@ module control_unit (
 	output reg [4:0]   memory_write_addr,
     
     //Program Counter
-    output reg         increment_program_counter
+    output reg         increment_program_counter,
+    output reg         branch_en;
+    output reg [4:0]   branch_addr;
 );
 
 /***************************************************************************
@@ -205,32 +207,47 @@ module control_unit (
 			
 			SEND_INSTRUCTION_SIGNALS: begin
                 case (instruction)
-                    ADD, SUB, XOR, AND, NOR, OR, CP, INC, DEC, LSL, LSR, NOT, INC, DEC, LSL, LSR, NOT: begin //17
+                    ADD, SUB, XOR, AND, NOR, OR, CP, INC, DEC, LSL, LSR, NOT: begin //
                         if (clock_counter == 0) begin
+
                             alu_instruction_select <= instruction;
                             alu_result_en <= 1'b1;
-                        end
-                        if (clock_counter == 1) begin
+
+                        end else if (clock_counter == 1) begin
+
                             alu_result_en <= 1'b0;
                             alu_result_tri <= 1'b1;
-                        end
-                        else begin
+
+                        end else begin
+
+                            clock_counter <= 4'b0000;
                             alu_result_tri <= 1'b0;
                             next_state => STORE_REGISTER;
+
                         end
                     end
-                    LDI, LD: begin //19
+                    LDI, LD: begin
+
+                        clock_counter <= 4'b0000;
                         next_state => STORE_REGISTER;
+
                     end
-                    ST: begin //20
+                    ST: begin
+                        clock_counter <= 4'b0000;
                         next_state => UPDATE_PC;
+
+                    end
+                    JMP: begin
+                        
+                    end
+                    JL, JE, JG begin
+                        
                     end
                 endcase
 			end
 			
 			STORE_REGISTER: begin
                 if (clock_counter == 0) begin
-
                     register_tri <= argument_1;
 				end
 				else begin
@@ -239,10 +256,6 @@ module control_unit (
 				end
 			end
 
-            STORE: begin
-                
-            end
-			
 			UPDATE_PC: begin
 				if (clock_counter == 0) begin
 					increment_program_counter <= 1'd1; 
