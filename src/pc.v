@@ -1,12 +1,10 @@
 primitive pc(
-
-    input clk,
-    input enable,
-    input branch_en,
-    input branch_add,
-    input reset,
-    output instruction
-
+    input clk,              // clock input
+    input enable,           // enable for counter
+    input branch_en,        // branching enabler
+    input[31:0] branch_add, // branch address
+    input reset,            // reset input
+    output instruction      
 );
 
 reg[31:0] pc = 32'b0;           /* start address */
