@@ -90,6 +90,11 @@ module control_unit (
         clock_counter <= clock_counter + 4'd1;
         current_state <= next_state;
     end
+
+	always @(posedge reset and posedge clk) begin
+        current_state = IDLE;
+        next_state = IDLE;
+    end
 	
 /***************************************************************************
    OUTPUT LOGIC
