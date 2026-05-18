@@ -1,7 +1,7 @@
 module one_hot(
-    output [7:0] out,   // Output of the counter
+    output reg [4:0] out,   // Output of the counter
     input enable,       // enable for counter
-    input instruction_reg,  // instruction input
+    input [4:0] instruction_reg,  // instruction input
     input clk,          // clock input
     input reset         // reset input
 );
@@ -9,13 +9,12 @@ module one_hot(
 /***************************************************************************
    INTERNAL VARIABLES
  -------------------------------------------------------------------------*/
-reg [7:0] out;  
 
-always @ (posedge clk)
+always @ (posedge clk or posedge reset)
     if (reset) begin
-        out <= 8'd0;
+        out <= 5'd0;
     end else if (enable) begin
-        out <= instruction_reg;
+        out <= 5'b00001 << instruction_reg;
 end
 
 endmodule  
