@@ -4,7 +4,7 @@ module pc(
     input branch_en,        // branching enabler
     input[31:0] branch_addr, // branch address
     input reset,            // reset input
-    output reg[31:0] pc     
+    output reg[4:0] pc     
 );
 
 always @(posedge clk or posedge reset) begin
