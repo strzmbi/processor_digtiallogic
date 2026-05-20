@@ -1,27 +1,24 @@
 module alu(
-    input  [4:0] A, B,
-    input  [5:0] ALUop,
-    output reg [4:0] Result
+    input[15:0] arg_0, arg_1,
+    input [5:0] operation,
+    output reg [15:0] result
 );
 
 always @(*) begin
-    case (ALUop)
-        3'b000: Result = A + B;     // ADD
-        3'b001: Result = A - B;     // SUB
-        3'b010: Result = A + 1;     // INC
-        3'b011: Result = A - 1;     // DEC
-        3'b100: Result = A >> 1;    // LSR
-        3'b101: Result = A << 1;    // LSL
-        3'b110: Result = A ^ B;     // XOR 
-        3'b111: Result = A & B;     // AND
-        3'b011: Result = ~(A | B);  // NOR
-        3'b101: Result = ~A;        // NOT
-        3'b110: Result = A | B;     // OR
-        default: Result = 0;
+    case (operation)
+        6'b000000: result = arg_0 + arg_1;     // arg_0DD
+        6'b000001: result = arg_0 - arg_1;     // SUB
+        6'b000011: result = arg_0 + 1;     // INC
+        6'b000100: result = arg_0 - 1;     // DEC
+        6'b000101: result = arg_0 >> 1;    // LSR
+        6'b000110: result = arg_0 << 1;    // LSL
+        6'b001000: result = arg_0 ^ arg_1;     // XOR 
+        6'b001001: result = arg_0 & arg_1;     // AND
+        6'b001010: result = ~(A | arg_1);  // NOR
+        6'b001011: result = ~A;        // NOT
+        6'b001100: result = A | arg_1;     // OR
+        default: result = 0;
     endcase
 end
 
 endmodule
-
-
-
