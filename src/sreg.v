@@ -1,26 +1,35 @@
-module sreg(difference, clk, rst, write_e, Q, notQ);
-    input[2:0] difference;
-    input clk, rst, write_e;
-    output[2:0] Q, notQ;
-    wire[2:0] temp;
-
-    reg [2:0] stored;
+module sreg(
+	//Status Register Input
+	input [15:0]  		difference,
+	input 		  		clk,
+	input		  		rst,
+	input			  	write_e,
+	
+	//Status Register Output
+	output reg [2:0]  	values);
+	
+/***************************************************************************
+   Status Register Output Bits
+ -------------------------------------------------------------------------
+   LSB		GREATER
+   BIT 2	LESS
+   MSB		EQUAL	
+ --------------------------------------------------------------------------*/
 
     always @(posedge clk or posedge rst) begin
-        if (rst)        stored <= 3'b000;
-        else if (write_e) stored <= difference;
+		if (rst) begin
+			values <= 16'd0;
+		end else begin
+			if (difference > 16'd0 && difference < 16'h8000) begin
+				values <= 3'b001;
+			end
+			else if (difference > 16'h8000) begin
+				values <= 3'bb010;
+			end
+			else if (difference == 16'd0)   begin
+				values <= 3'bb100;
+			end
+		end
     end
-
-    assign Q    = stored;
-    assign notQ = ~stored;
+	
 endmodule
-
-// module sreg(difference, overflow, clk, rst, write_e, Q, notQ);
-//     input[14:0] difference;
-//     input overflow, clk, rst, write_e;
-//     output[15:0] Q, notQ;
-//     wire[15:0] temp;
-
-//     gle e(.difference(difference), .overflow(overflow), .r(temp));
-//     register r(.d(temp), .clk(clk), .rst(rst), .write_e(write_e), .Q(Q), .notQ(notQ));
-// endmodule
