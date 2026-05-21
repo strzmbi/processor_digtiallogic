@@ -24,10 +24,10 @@ module sreg(
 				values <= 3'b001;
 			end
 			else if (difference > 16'h8000) begin
-				values <= 3'bb010;
+				values <= 3'b010;
 			end
 			else if (difference == 16'd0)   begin
-				values <= 3'bb100;
+				values <= 3'b100;
 			end
 		end
     end
