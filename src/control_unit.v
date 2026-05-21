@@ -1,20 +1,20 @@
-
-
 module control_unit ( 
     // Reset (async)
     input reset,
 
     //One Hot Enable
-    output              one_hot_enable;
+    output reg          one_hot_enable,
 
 	//Decoded Instruction
-    input clk;
+    input clk,
     input [5:0]         instruction,
     input [4:0]         argument_1, argument_2,
     
     //Register Signal
     output reg [4:0]    register_tri,
     output reg [4:0]    register_en,
+    output reg          register_write,
+    output reg          reg_read_en,
 
 	//Immediate Loading Signals 
 	output reg			immediate_en,
@@ -28,16 +28,13 @@ module control_unit (
     output reg [5:0]    alu_instruction_select,
     
     //Memory Signals
-    output reg         memory_read_en,
-    output reg         memory_write_en,
+    output reg          memory_read_en,
+    output reg          memory_write_en,
     
-    output reg [4:0]   memory_read_addr,
-	output reg [4:0]   memory_write_addr,
-    
-    //Program Counter
-    output reg         increment_program_counter,
-    output reg         branch_en;
-    output reg [4:0]   branch_addr;
+    output reg [4:0]    memory_addr,
+
+    output [4:0]        pc_out
+
 );
 
 /***************************************************************************
@@ -95,13 +92,30 @@ module control_unit (
     always @(posedge clk) begin
         clock_counter <= clock_counter + 4'd1;
         current_state <= next_state;
+        if (reset) begin
+            current_state <= IDLE;
+            next_state <= IDLE;
+            one_hot_enable <= 1'd0; 
+        end
     end
 
-    always @(posedge reset and posedge clk) begin
-        current_state = IDLE;
-        next_state = IDLE;
-		one_hot_enable = 1'd0; 
-    end
+    //Program Counter
+    reg         increment_program_counter;
+    reg         branch_en;
+    reg [4:0]   branch_addr;
+    reg [4:0]   instruction_addr;
+
+    pc pc(
+        .clk(clk),             
+        .enable(increment_program_counter),          
+        .branch_en(branch_en),     
+        .branch_addr(branch_addr), 
+        .reset(reset),
+        .pc(instruction_addr)
+    );
+
+    assign pc_out = instruction_addr;
+
 	
 /***************************************************************************
    OUTPUT LOGIC
@@ -119,7 +133,7 @@ module control_unit (
 					default: next_state <= SEND_INSTRUCTION_SIGNALS;
 				endcase
 
-				clock_counter <= 4'b0000;
+				//clock_counter <= 4'b0000;
 			end
 			
 			LOAD_1: begin
@@ -133,7 +147,6 @@ module control_unit (
 					alu_load_en <= 1'd0;
 					next_state <= SEND_INSTRUCTION_SIGNALS;
                     clock_counter <= 4'b0000;
-
 				end
 			end
 			
@@ -144,7 +157,7 @@ module control_unit (
 					alu_load_en <= 1'd1;
 				
 				end else if (clock_counter == 4'b0001) begin
-					alu_load_en <= 1'd0;
+					alu_load_en <= 1'd1;
 					register_tri <= argument_2;
 				
 				end else begin
@@ -180,7 +193,7 @@ module control_unit (
 
                         if (clock_counter == 4'b0000) begin // can break with register select
                             
-                            memory_read_addr <= argument_2;
+                            memory_addr <= argument_2;
                             memory_read_en <= 1'd1;
                                                         
                         end else begin
@@ -194,7 +207,7 @@ module control_unit (
                     default: begin // puts register onto the bus
 
                         if (clock_counter == 4'b0000) begin // can break with register select
-                            memory_write_addr <= argument_2;
+                            memory_addr <= argument_2;
                             register_tri <= argument_1;
                             memory_write_en <= 1'd1;
                             
@@ -225,26 +238,37 @@ module control_unit (
 
                             clock_counter <= 4'b0000;
                             alu_result_tri <= 1'b0;
-                            next_state => STORE_REGISTER;
+                            next_state <= STORE_REGISTER;
 
                         end
                     end
                     LDI, LD: begin
 
                         clock_counter <= 4'b0000;
-                        next_state => STORE_REGISTER;
+                        next_state <= STORE_REGISTER;
 
                     end
                     ST: begin
                         clock_counter <= 4'b0000;
-                        next_state => UPDATE_PC;
+                        next_state <= UPDATE_PC;
 
                     end
                     JMP: begin
+                        branch_addr <= argument_1;
+                        branch_en   <= 1'b1;
+                        next_state  <= UPDATE_PC;
 
                     end
-                    JL, JE, JG begin
-                        
+                    
+                    // need stat reg input
+                    JL begin 
+                    
+                    end
+                    JE begin 
+                    end 
+                    JG 
+                    begin
+
                     end
                 endcase
 			end
@@ -252,10 +276,14 @@ module control_unit (
 			STORE_REGISTER: begin
                 if (clock_counter == 0) begin
                     register_tri <= argument_1;
+                    register_en <= argument_1;   // destination register address
+                    register_write <= 1'b1;
+                    reg_read_en <= 1'b1; 
 				end
 				else begin
 					next_state <= UPDATE_PC;
 					clock_counter <= 4'b0000; 
+                    register_en <= 5'b0000;            // reset enable for reg
 				end
 			end
 
