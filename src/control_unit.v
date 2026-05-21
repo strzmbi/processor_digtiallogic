@@ -33,7 +33,10 @@ module control_unit (
     
     output reg [4:0]    memory_addr,
 
-    output [4:0]        pc_out
+    output [4:0]        pc_out,
+
+    //Stat reg flags
+    input [2:0]         status_flags
 
 );
 
@@ -87,15 +90,20 @@ module control_unit (
  -------------------------------------------------------------------------*/
  
 	reg [3:0]   clock_counter;
-	reg [3:0]   current_state,  next_state; 
+	reg [3:0]   current_state, next_state; 
 	
-    always @(posedge clk) begin
-        clock_counter <= clock_counter + 4'd1;
-        current_state <= next_state;
+    always @(posedge clk or posedge reset) begin
         if (reset) begin
             current_state <= IDLE;
-            next_state <= IDLE;
-            one_hot_enable <= 1'd0; 
+            next_state    <= IDLE;
+            clock_counter <= 4'b0000;
+        end else begin
+            // reset counter on state transition, increment within state
+            if (current_state !== next_state)
+                clock_counter <= 4'b0000;
+            else
+                clock_counter <= clock_counter + 4'd1;
+            current_state <= next_state;
         end
     end
 
@@ -103,7 +111,7 @@ module control_unit (
     reg         increment_program_counter;
     reg         branch_en;
     reg [4:0]   branch_addr;
-    reg [4:0]   instruction_addr;
+    wire [4:0]  instruction_addr;
 
     pc pc(
         .clk(clk),             
@@ -122,68 +130,90 @@ module control_unit (
  -------------------------------------------------------------------------*/
 
 	always @(posedge clk) begin
+
+        // Defaults - all control signals low unless explicitly driven below
+        register_write  <= 1'b0;
+        reg_read_en     <= 1'b0;
+        alu_load_en     <= 1'b0;
+        alu_result_en   <= 1'b0;
+        memory_read_en  <= 1'b0;
+        memory_write_en <= 1'b0;
+        branch_en       <= 1'b0;
+
 		case (current_state)
+
 			IDLE: begin
+                one_hot_enable <= 1'b1;
+
 				case (instruction)
 					ADD, SUB, AND, XOR, NOR, OR, CP: next_state <= LOAD_2;
-					INC, DEC, LSL, LSR, NOT: next_state <= LOAD_1;
-					LDI: next_state <= LOAD_LITERAL;
-                    LD, ST: next_state <= LOAD_BUS;
-					
-					default: next_state <= SEND_INSTRUCTION_SIGNALS;
+					INC, DEC, LSL, LSR, NOT:         next_state <= LOAD_1;
+					LDI:                             next_state <= LOAD_LITERAL;
+                    LD, ST:                          next_state <= LOAD_BUS;
+					default:                         next_state <= SEND_INSTRUCTION_SIGNALS;
 				endcase
-
-				//clock_counter <= 4'b0000;
 			end
 			
 			LOAD_1: begin
-				if (clock_counter == 4'b0000) begin
-					one_hot_enable <= 1'd1;
-					register_tri <= argument_1;
-					alu_load_en <= 1'd1;
-				
-				end else begin
-                    one_hot_enable <= 1'd0;
-					alu_load_en <= 1'd0;
-					next_state <= SEND_INSTRUCTION_SIGNALS;
-                    clock_counter <= 4'b0000;
-				end
-			end
+                if (clock_counter == 4'b0000) begin
+                    one_hot_enable <= 1'b1;
+                    register_tri   <= argument_1;
+                    reg_read_en    <= 1'b1;
+
+                end else if (clock_counter == 4'b0001) begin
+                    reg_read_en    <= 1'b1;
+                    alu_load_en    <= 1'b1;
+
+                end else if (clock_counter == 4'b0010) begin
+                    reg_read_en    <= 1'b1;         // hold while prev fires
+
+                end else begin
+                    one_hot_enable <= 1'b0;
+                    next_state     <= SEND_INSTRUCTION_SIGNALS;
+                end
+            end
 			
 			LOAD_2: begin
-				if (clock_counter == 4'b0000) begin
-					one_hot_enable <= 1'd1;
-					register_tri <= argument_1;
-					alu_load_en <= 1'd1;
-				
-				end else if (clock_counter == 4'b0001) begin
-					alu_load_en <= 1'd1;
-					register_tri <= argument_2;
-				
-				end else begin
-                    one_hot_enable <= 1'd0;
-					next_state <= SEND_INSTRUCTION_SIGNALS;
-					clock_counter <= 4'b0000; 
-					
-				end
-			end
+                if (clock_counter == 4'b0000) begin
+                    one_hot_enable <= 1'b1;
+                    register_tri   <= argument_2;
+                    reg_read_en    <= 1'b1;         // put arg2 on BUS
+
+                end else if (clock_counter == 4'b0001) begin
+                    reg_read_en    <= 1'b1;         // hold arg2
+                    alu_load_en    <= 1'b1;         // signal to latch
+
+                end else if (clock_counter == 4'b0010) begin
+                    reg_read_en    <= 1'b1;         // hold arg2 while prev fires
+                    register_tri   <= argument_1;   // switch to arg1
+
+                end else if (clock_counter == 4'b0011) begin
+                    reg_read_en    <= 1'b1;         // put arg1 on BUS
+                    alu_load_en    <= 1'b1;         // signal to latch
+
+                end else if (clock_counter == 4'b0100) begin
+                    reg_read_en    <= 1'b1;         // hold arg1 while prev fires
+
+                end else begin
+                    one_hot_enable <= 1'b0;
+                    next_state     <= SEND_INSTRUCTION_SIGNALS;
+                end
+            end
 			
 			LOAD_LITERAL: begin // puts the value onto the bus
 				if (clock_counter == 4'b0000) begin
                     
-					immediate_val <= argument_1;
-					immediate_en <= 1'd1;
+					immediate_val <= {11'b0, argument_2};
+					immediate_en  <= 1'b1;
 					
 				end else if (clock_counter == 4'b0001) begin
 
-					immediate_en <= 1'd0;
-					immediate_tri <= 1'd1;
-					
-				end else begin 
-					
-					next_state <= SEND_INSTRUCTION_SIGNALS;
-					clock_counter <= 4'b0000; 
+					immediate_en  <= 1'b0;
+					immediate_tri <= 1'b1;          // drive BUS with immediate
 
+				end else begin 
+                    immediate_tri <= 1'b1;          // hold BUS stable for STORE_REGISTER
+					next_state    <= SEND_INSTRUCTION_SIGNALS;
 				end
 			end
 
@@ -191,30 +221,24 @@ module control_unit (
                 case (instruction)
                     LD: begin // puts the memory onto the bus
 
-                        if (clock_counter == 4'b0000) begin // can break with register select
-                            
-                            memory_addr <= argument_2;
-                            memory_read_en <= 1'd1;
+                        if (clock_counter == 4'b0000) begin
+                            memory_addr    <= argument_2;
+                            memory_read_en <= 1'b1;
                                                         
                         end else begin
-                            memory_read_en <= 1'd0;
-
                             next_state <= SEND_INSTRUCTION_SIGNALS;
-                            clock_counter <= 4'b0000;
                         end
                         
                     end 
                     default: begin // puts register onto the bus
 
-                        if (clock_counter == 4'b0000) begin // can break with register select
-                            memory_addr <= argument_2;
-                            register_tri <= argument_1;
-                            memory_write_en <= 1'd1;
+                        if (clock_counter == 4'b0000) begin
+                            memory_addr     <= argument_2;
+                            register_tri    <= argument_1;
+                            memory_write_en <= 1'b1;
                             
                         end else begin
-                            memory_write_en <= 1'd0;
                             next_state <= SEND_INSTRUCTION_SIGNALS;
-                            clock_counter <= 4'b0000;
                         end
 
                     end
@@ -223,80 +247,91 @@ module control_unit (
 			
 			SEND_INSTRUCTION_SIGNALS: begin
                 case (instruction)
-                    ADD, SUB, XOR, AND, NOR, OR, CP, INC, DEC, LSL, LSR, NOT: begin //
-                        if (clock_counter == 0) begin
+                    ADD, SUB, XOR, AND, NOR, OR, INC, DEC, LSL, LSR, NOT: begin
+                        if (clock_counter == 4'b0000) begin
 
                             alu_instruction_select <= instruction;
-                            alu_result_en <= 1'b1;
 
-                        end else if (clock_counter == 1) begin
+                        end else if (clock_counter == 4'b0001) begin
 
-                            alu_result_en <= 1'b0;
-                            alu_result_tri <= 1'b1;
+                            alu_result_tri <= 1'b1;     // drive BUS with ALU result
 
                         end else begin
 
-                            clock_counter <= 4'b0000;
-                            alu_result_tri <= 1'b0;
-                            next_state <= STORE_REGISTER;
+                            alu_result_tri <= 1'b1;     // hold BUS stable for STORE_REGISTER
+                            next_state     <= STORE_REGISTER;
 
                         end
                     end
                     LDI, LD: begin
-
-                        clock_counter <= 4'b0000;
+                        // BUS already driven by immediate_tri or memory, go straight to store
                         next_state <= STORE_REGISTER;
-
                     end
                     ST: begin
-                        clock_counter <= 4'b0000;
                         next_state <= UPDATE_PC;
-
+                    end
+                    CP: begin 
+                        if (clock_counter == 4'b0000) begin
+                            alu_instruction_select <= instruction;
+                            alu_result_en          <= 1'b1;     // only CP writes flags
+                        end else begin
+                            next_state <= UPDATE_PC;
+                        end
                     end
                     JMP: begin
                         branch_addr <= argument_1;
                         branch_en   <= 1'b1;
                         next_state  <= UPDATE_PC;
-
                     end
-                    
+
                     // need stat reg input
-                    JL begin 
-                    
+                    JE: begin
+                        if (status_flags[0]) begin  // FLAG_ZERO
+                            branch_addr <= argument_1;
+                            branch_en   <= 1'b1;
+                        end
+                        next_state <= UPDATE_PC;
                     end
-                    JE begin 
-                    end 
-                    JG 
-                    begin
-
+                    JG: begin
+                        if (status_flags[1]) begin  // FLAG_GT
+                            branch_addr <= argument_1;
+                            branch_en   <= 1'b1;
+                        end
+                        next_state <= UPDATE_PC;
+                    end
+                    JL: begin
+                        if (status_flags[2]) begin  // FLAG_LT
+                            branch_addr <= argument_1;
+                            branch_en   <= 1'b1;
+                        end
+                        next_state <= UPDATE_PC;
                     end
                 endcase
 			end
 			
 			STORE_REGISTER: begin
-                if (clock_counter == 0) begin
-                    register_tri <= argument_1;
-                    register_en <= argument_1;   // destination register address
-                    register_write <= 1'b1;
-                    reg_read_en <= 1'b1; 
-				end
-				else begin
+                if (clock_counter == 4'b0000) begin
+                    register_en    <= argument_1;   // destination register address
+                    register_write <= 1'b1;         // write BUS into register
+
+				end else begin
 					next_state <= UPDATE_PC;
-					clock_counter <= 4'b0000; 
-                    register_en <= 5'b0000;            // reset enable for reg
 				end
 			end
 
 			UPDATE_PC: begin
-				if (clock_counter == 0) begin
-					increment_program_counter <= 1'd1; 
-				end
-				else begin
-					increment_program_counter <= 1'd0;
-					next_state <= IDLE;
-					clock_counter <= 4'b0000; 
+				if (clock_counter == 4'b0000) begin
+                    // clear bus drivers before incrementing PC
+                    alu_result_tri <= 1'b0;
+                    immediate_tri  <= 1'b0;
+					increment_program_counter <= 1'b1;  // pulse PC for one cycle
+
+				end else begin
+					increment_program_counter <= 1'b0;
+					next_state                <= IDLE;
 				end
 			end
+
 		endcase
 	end
 
