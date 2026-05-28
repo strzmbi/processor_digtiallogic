@@ -34,6 +34,7 @@ module control_unit (
     output reg [4:0]    memory_addr,
 
     output [4:0]        pc_out,
+    output reg          flag_en,
 
     //Stat reg flags
     input [2:0]         status_flags
@@ -157,6 +158,7 @@ always @(*) begin
     memory_write_en           = 0;
     increment_program_counter = 0;
     branch_en                 = 0;
+    flag_en                   = 0;
 
     next_state = current_state;
 
@@ -344,12 +346,11 @@ always @(*) begin
                     end
                     CP: begin
                         alu_instruction_select = latched_instruction;
-                        alu_result_en          = 1'b1;
+                        flag_en          = 1'b1;
                         next_state             = UPDATE_PC;
                     end
                     JMP: begin
                         alu_instruction_select = CP;
-                        alu_result_en = 1'b1;
                         branch_addr = latched_arg1;
                         branch_en   = 1'b1;
                         increment_program_counter = 1'b1; 
@@ -359,17 +360,14 @@ always @(*) begin
                     // need stat reg input
                     JE: begin
                         alu_instruction_select = CP;
-                        alu_result_en = 1'b1;
                         next_state = BRANCH_EVAL;
                     end
                     JG: begin
                         alu_instruction_select = CP;
-                        alu_result_en = 1'b1;
                         next_state = BRANCH_EVAL;
                     end
                     JL: begin
                         alu_instruction_select = CP;
-                        alu_result_en = 1'b1;
                         next_state = BRANCH_EVAL;
                     end
                 endcase

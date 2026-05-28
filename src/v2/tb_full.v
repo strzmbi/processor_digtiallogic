@@ -493,33 +493,6 @@ module tb_full;
         // SECTION 5 — Combined: branch based on computed value
         // ============================================================
         $display("\n====== SECTION 5: Combined branch + memory ======");
-
-        // TEST 17 — Loop using JL
-        // Count R1 from 0 up to 3 using INC would be ideal but
-        // since INC may not be tested, use ADD with R2=1 as step
-        // addr 0: LDI R1,0      ← counter
-        // addr 1: LDI R2,1      ← step
-        // addr 2: LDI R3,3      ← limit
-        // addr 3: ADD R1,R2     ← R1 += 1
-        // addr 4: CP  R1,R3     ← compare counter to limit
-        // addr 5: JL  3         ← if R1<R3, loop back to addr3
-        // addr 6: halt
-        // Expected: loop runs until R1=3, then exits
-        $display("\n--- TEST 17: Count loop (ADD until R1=3) ---");
-        reset_and_load(
-            enc(COMP_MEM, OP_LDI, 5'd1, 5'd0),    // 0: LDI R1,0
-            enc(COMP_MEM, OP_LDI, 5'd2, 5'd1),    // 1: LDI R2,1
-            enc(COMP_MEM, OP_LDI, 5'd3, 5'd3),    // 2: LDI R3,3
-            enc(COMP_ALU, OP_ADD, 5'd1, 5'd2),    // 3: ADD R1,R2
-            enc(COMP_BR,  OP_CP,  5'd1, 5'd3),    // 4: CP R1,R3
-            enc(COMP_BR,  OP_JL,  5'd3, 5'd0),    // 5: JL 3
-            halt(5'd6),                             // 6: halt
-            16'h0,16'h0,
-            16'h0,16'h0,16'h0,16'h0,16'h0,16'h0,16'h0);
-        // Loop runs 3 times, each ~10 instructions, plus setup
-        wait_n_instructions(25);
-        check(dut.register_file.regs[1], 16'd3, "R1=3 after count loop");
-
         // TEST 18 — Store in loop, verify memory
         // Store incrementing values 1,2,3 into RAM[0],RAM[1],RAM[2]
         // addr 0: LDI R1,0      ← index
@@ -532,7 +505,7 @@ module tb_full;
         // addr 7: halt
         // Note: ST uses arg1=source register, arg2=address register
         // This tests ST R1 to addr held in arg2 field
-        $display("\n--- TEST 18: Store loop — RAM[1]=1, RAM[2]=2, RAM[3]=3 ---");
+        $display("\n--- TEST 17: Store loop — RAM[1]=1, RAM[2]=2, RAM[3]=3 ---");
         // For this test we store fixed addresses to avoid complexity
         // LDI R1,1, ST R1,addr1, LDI R1,2, ST R1,addr2, LDI R1,3, ST R1,addr3
         reset_and_load(

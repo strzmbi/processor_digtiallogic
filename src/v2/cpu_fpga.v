@@ -19,8 +19,6 @@ module cpu_fpga (
 //     );
 // end
 
-    wire reset = SW[0];
-
     wire [15:0] BUS;
     wire [15:0] TEMP_REG_INT;
     wire [15:0] TEMP_ALU_RES_OUT;
@@ -49,8 +47,9 @@ module cpu_fpga (
 
     wire        chip_sel;
     wire        memory_read_en;
-    wire        memory_write_en;
     wire [4:0]  memory_addr;
+    wire        memory_write_en;
+    wire        flag_en;
 
     assign chip_sel = memory_read_en | memory_write_en;
 
@@ -76,7 +75,8 @@ module cpu_fpga (
         .memory_write_en(memory_write_en),
         .memory_addr(memory_addr),
         .status_flags(TEMP_REG_STAT_OUT),
-        .pc_out(pc_out)
+        .pc_out(pc_out),
+        .flag_en(flag_en)
     );
 
    reg [15:0] alu_arg_0, alu_arg_1;
@@ -127,7 +127,7 @@ module cpu_fpga (
         .difference(flags),
         .clk(CLOCK_50),
         .rst(reset),
-        .write_e(alu_result_en),
+        .write_e(flag_en),
         .values(TEMP_REG_STAT_OUT)
     );
 

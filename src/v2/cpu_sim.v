@@ -54,6 +54,7 @@ end
     wire [5:0]  alu_instruction_select;
 
     wire        chip_sel;
+    wire        flag_en;
     wire        memory_read_en;
     wire        memory_write_en;
     wire [4:0]  memory_addr;
@@ -82,7 +83,8 @@ end
         .memory_write_en(memory_write_en),
         .memory_addr(memory_addr),
         .status_flags(TEMP_REG_STAT_OUT),
-        .pc_out(pc_out)
+        .pc_out(pc_out),
+        .flag_en(flag_en)
     );
 
    reg [15:0] alu_arg_0, alu_arg_1;
@@ -133,7 +135,7 @@ end
         .difference(flags),
         .clk(CLOCK_50),
         .rst(reset),
-        .write_e(alu_result_en),
+        .write_e(flag_en),
         .Q(TEMP_REG_STAT_OUT)
     );
 
