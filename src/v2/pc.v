@@ -9,7 +9,7 @@ module pc(
 
 always @(posedge clk or posedge reset) begin
     if (reset) begin
-        pc <= 32'b0;            /* reset to start address */ 
+        pc <= 5'b0;            /* reset to start address */ 
     end else if (enable) begin
             if (branch_en) begin
                 pc <= branch_addr;

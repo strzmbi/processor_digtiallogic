@@ -8,12 +8,20 @@ module cpu_sim(
 
 always @(posedge CLOCK_50) begin
     $display(
-        "t=%0t imm_tri=%b reg_wr=%b reg_en=%b BUS=%h",
+        "t=%0t imm_tri=%b reg_wr=%b reg_en=%b BUS=%h PC=%d RAW=%h DEC=%b A1=%d A2=%d FLAGS gt=%b lt=%b eq=%b",
         $time,
         immediate_tri,
         register_write,
         register_en,
-        BUS
+        BUS,
+        pc_out,
+        raw_instruction,
+        decoded_instruction,
+        argument_1,
+        argument_2, 
+        TEMP_REG_STAT_OUT[0],
+        TEMP_REG_STAT_OUT[1],
+        TEMP_REG_STAT_OUT[2]
     );
 end
 
@@ -126,7 +134,7 @@ end
         .clk(CLOCK_50),
         .rst(reset),
         .write_e(alu_result_en),
-        .values(TEMP_REG_STAT_OUT)
+        .Q(TEMP_REG_STAT_OUT)
     );
 
     register_file register_file(

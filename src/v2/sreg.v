@@ -1,7 +1,7 @@
 module sreg(
     input  [2:0]  difference,
     input         clk, rst, write_e,
-    output [2:0]  values
+    output [2:0]  Q
 );
     reg [2:0] stored;
 

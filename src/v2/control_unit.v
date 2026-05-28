@@ -83,7 +83,8 @@ module control_unit (
 					UPDATE_PC                   = 4'b0100,
 					LOAD_LITERAL                = 4'b0101,
 					STORE_REGISTER              = 4'b0110,
-					SEND_INSTRUCTION_SIGNALS    = 4'b0111;
+					SEND_INSTRUCTION_SIGNALS    = 4'b0111,
+                    BRANCH_EVAL                 = 4'b1000;
 				
 /***************************************************************************
    SEQUENTIAL LOGIC
@@ -335,43 +336,41 @@ always @(*) begin
                         next_state = STORE_REGISTER;
                     end
                     ST: begin
+                        register_tri = argument_1; // R1
+                        reg_read_en = 1;
+                        memory_write_en = 1;
+                        memory_addr = argument_2;
                         next_state = UPDATE_PC;
                     end
-                    CP: begin 
-                        if (clock_counter == 4'b0000) begin
-                            alu_instruction_select = latched_instruction;
-                            alu_result_en          = 1'b1;     // only CP writes flags
-                        end else begin
-                            next_state = UPDATE_PC;
-                        end
+                    CP: begin
+                        alu_instruction_select = latched_instruction;
+                        alu_result_en          = 1'b1;
+                        next_state             = UPDATE_PC;
                     end
                     JMP: begin
+                        alu_instruction_select = CP;
+                        alu_result_en = 1'b1;
                         branch_addr = latched_arg1;
                         branch_en   = 1'b1;
-                        next_state  = UPDATE_PC;
+                        increment_program_counter = 1'b1; 
+                        next_state  = IDLE;
                     end
 
                     // need stat reg input
                     JE: begin
-                        if (status_flags[2]) begin  // FLAG_ZERO
-                            branch_addr = latched_arg1;
-                            branch_en   = 1'b1;
-                        end
-                        next_state = UPDATE_PC;
+                        alu_instruction_select = CP;
+                        alu_result_en = 1'b1;
+                        next_state = BRANCH_EVAL;
                     end
                     JG: begin
-                        if (status_flags[0]) begin  // FLAG_GT
-                            branch_addr = latched_arg1;
-                            branch_en   = 1'b1;
-                        end
-                        next_state = UPDATE_PC;
+                        alu_instruction_select = CP;
+                        alu_result_en = 1'b1;
+                        next_state = BRANCH_EVAL;
                     end
                     JL: begin
-                        if (status_flags[1]) begin  // FLAG_LT
-                            branch_addr = latched_arg1;
-                            branch_en   = 1'b1;
-                        end
-                        next_state = UPDATE_PC;
+                        alu_instruction_select = CP;
+                        alu_result_en = 1'b1;
+                        next_state = BRANCH_EVAL;
                     end
                 endcase
 			end
@@ -383,7 +382,9 @@ always @(*) begin
                     register_write = 1'b1;         // write BUS into register
                     case (latched_instruction)          // write imm to BUS if load
                         LDI: immediate_tri = 1'b1;
-                        LD : memory_read_en = 1'b1;
+                        LD : begin 
+                            memory_read_en = 1'b1; 
+                        end
                         default: begin 
                             alu_result_tri = 1'b1; 
                             immediate_tri = 1'b0;  
@@ -396,6 +397,35 @@ always @(*) begin
 					next_state = UPDATE_PC;
 				end
 			end
+
+            BRANCH_EVAL: begin
+                case (latched_instruction)
+
+                    JE: begin
+                        if (status_flags[2]) begin
+                            branch_addr = latched_arg1;
+                            branch_en   = 1'b1;
+                        end
+                    end
+
+                    JG: begin
+                        if (status_flags[0]) begin
+                            branch_addr = latched_arg1;
+                            branch_en   = 1'b1;
+                        end
+                    end
+
+                    JL: begin
+                        if (status_flags[1]) begin
+                            branch_addr = latched_arg1;
+                            branch_en   = 1'b1;
+                        end
+                    end
+                endcase
+
+                increment_program_counter = 1'b1;
+                next_state = IDLE;
+            end
 
 			UPDATE_PC: begin
 				if (clock_counter == 4'b0000) begin
