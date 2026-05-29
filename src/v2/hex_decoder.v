@@ -1,5 +1,5 @@
 module hex_decoder(
-    input  [4:0] bin,
+    input  [3:0] bin,
     output reg [6:0] seg
 );
 

@@ -1,34 +1,41 @@
 module cpu_fpga (
-    input clk,
-    input reset,
-    input[5:0] wire decoded_instruction,
-    input[4:0] argument_1,
-    input[4:0]  argument_2,
-    output[4:0]  pc_out
+    input               clk,
+    input               reset,
+    input wire [5:0]    decoded_instruction,
+    input[4:0]          argument_1,
+    input[4:0]          argument_2,
+    output[4:0]         pc_out,
+    output wire [2:0]   TEMP_REG_STAT_OUT,
+    output wire [15:0]  BUS
 );
 
+initial begin
+    $display("FPGA LOADED");
+end
+always @(posedge clk) begin
+    $display(
+        "t=%0t imm_tri=%b reg_wr=%b reg_en=%b BUS=%h PC=%d RAW=%h DEC=%b A1=%d A2=%d FLAGS gt=%b lt=%b eq=%b",
+        $time,
+        immediate_tri,
+        register_write,
+        register_en,
+        BUS,
+        pc_out,
+        raw_instruction,
+        decoded_instruction,
+        argument_1,
+        argument_2, 
+        TEMP_REG_STAT_OUT[0],
+        TEMP_REG_STAT_OUT[1],
+        TEMP_REG_STAT_OUT[2]
+    );
+end
 
-// always @(posedge CLOCK_50) begin
-//     $display(
-//         "t=%0t imm_tri=%b reg_wr=%b reg_en=%b BUS=%h",
-//         $time,
-//         immediate_tri,
-//         register_write,
-//         register_en,
-//         BUS
-//     );
-// end
-
-    wire [15:0] BUS;
     wire [15:0] TEMP_REG_INT;
     wire [15:0] TEMP_ALU_RES_OUT;
-    wire [2:0]  TEMP_REG_STAT_OUT;
     wire [2:0]  flags;
 
     wire [15:0] raw_instruction;
-    wire [5:0]  decoded_instruction;
-    wire [4:0]  argument_1, argument_2;
-    wire [4:0]  pc_out;
     wire        one_hot_enable;
 
     wire [4:0]  register_tri;
@@ -54,9 +61,9 @@ module cpu_fpga (
     assign chip_sel = memory_read_en | memory_write_en;
 
     control_unit c(
-        .reset(SW[0]),
+        .reset(reset),
         .one_hot_enable(one_hot_enable),
-        .clk(CLOCK_50),
+        .clk(clk),
         .instruction(decoded_instruction),
         .argument_1(argument_1),
         .argument_2(argument_2),
@@ -81,7 +88,7 @@ module cpu_fpga (
 
    reg [15:0] alu_arg_0, alu_arg_1;
 
-    always @(posedge CLOCK_50) begin
+    always @(posedge clk) begin
         if (alu_load_en > 1'b0) begin
             alu_arg_0 <= alu_arg_1;
             alu_arg_1 <= BUS;
@@ -125,15 +132,15 @@ module cpu_fpga (
 
     sreg status_reg(
         .difference(flags),
-        .clk(CLOCK_50),
+        .clk(clk),
         .rst(reset),
         .write_e(flag_en),
-        .values(TEMP_REG_STAT_OUT)
+        .Q(TEMP_REG_STAT_OUT)
     );
 
     register_file register_file(
         .d(BUS),
-        .clk(CLOCK_50),
+        .clk(clk),
         .rst(reset),
         .write_addr(register_en),
         .write_en(register_write),
@@ -159,18 +166,18 @@ module cpu_fpga (
         .read_en(memory_read_en)
     );
 
-    decoder dec(
-        .raw_binary_instruction(raw_instruction),
-        .enable(one_hot_enable),
-        .decoded_instruction(decoded_instruction),
-        .out_arg_1(argument_1),
-        .out_arg_2(argument_2)
-    );
+    // decoder dec(
+    //     .raw_binary_instruction(raw_instruction),
+    //     .enable(one_hot_enable),
+    //     .decoded_instruction(decoded_instruction),
+    //     .out_arg_1(argument_1),
+    //     .out_arg_2(argument_2)
+    // );
 
-    rom rom(
-        .address(pc_out),
-        .instruction(raw_instruction)
-    );
+    // rom rom(
+    //     .address(pc_out),
+    //     .instruction(raw_instruction)
+    // );
 
     output_to_bus bus_outputs(
         .alu_data(TEMP_ALU_RES_OUT),
